@@ -24,8 +24,10 @@ public final class UiStyle
 	public static final Color NOTICE = new Color(0xE8, 0xC4, 0x6A);
 	public static final Color CARD = ColorScheme.DARKER_GRAY_COLOR;
 	public static final Color BACKGROUND = ColorScheme.DARK_GRAY_COLOR;
-	public static final Color TEXT = ColorScheme.LIGHT_GRAY_COLOR;
-	public static final Color MUTED = ColorScheme.MEDIUM_GRAY_COLOR;
+	/** Main text: near white, about 12:1 against the card. */
+	public static final Color TEXT = new Color(0xDC, 0xDC, 0xDC);
+	/** Secondary text: about 6:1 against the card, still easy to read. */
+	public static final Color MUTED = ColorScheme.LIGHT_GRAY_COLOR;
 	public static final Color LINK = ColorScheme.BRAND_ORANGE;
 
 	/** Usable width inside the side panel's padding. */
