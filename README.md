@@ -41,7 +41,8 @@ Wanted          3 / 9.1 - 1 in 33
 - **History:** every task, newest first, with its listed chance. You can exclude a roll from the stats, and undo that.
 - **Fairness by task:** after 50 rolls at a master, a check of whether you really get each task as often as the listed
   odds say.
-- **Wanted tasks:** the tasks that master can give you, with their chances and your total chance per roll.
+- **Wanted tasks:** the tasks that master can give you, with their chances and your total chance per roll. The task
+  you held when you opened the list is included too, shown as **?** until you open the list again without a task.
 - **Data:** export everything as CSV, or reset.
 
 ## How the numbers work

@@ -74,8 +74,10 @@ public class TrackerView
 	public static class WantedOption
 	{
 		String task;
-		/** Chance per roll with no active task. */
-		double chance;
+		/** Chance per roll with no active task, or null when it isn't known yet. */
+		Double chance;
 		boolean wanted;
+		/** Why the chance is unknown or zero, for a tooltip; null for an ordinary row. */
+		String note;
 	}
 }

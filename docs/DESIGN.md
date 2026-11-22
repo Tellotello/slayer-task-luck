@@ -55,7 +55,9 @@ marked approximate.
 
 The list shows the task you currently hold as 0% and rescales the rest. Each snapshot records that held task, and when
 a later roll needs its weight, `OddsModel` borrows it from another exact snapshot of the same master. At roll time,
-the task held then, if still active, is removed from the roll.
+the task held then, if still active, is removed from the roll. The wanted-task picker still offers the held task, with
+an unknown chance until a weight can be borrowed, and keeps wanted tasks that dropped off the list so they can be
+unticked.
 
 ### Blocklist
 

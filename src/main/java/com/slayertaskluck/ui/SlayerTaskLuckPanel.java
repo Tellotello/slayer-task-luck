@@ -561,18 +561,41 @@ public class SlayerTaskLuckPanel extends PluginPanel
 
 		double total = 0;
 		final List<String> current = new ArrayList<>();
+		final List<String> unknown = new ArrayList<>();
 		for (TrackerView.WantedOption o : options)
 		{
 			if (o.isWanted())
 			{
-				total += o.getChance();
 				current.add(o.getTask());
+				if (o.getChance() == null)
+				{
+					unknown.add(o.getTask());
+				}
+				else
+				{
+					total += o.getChance();
+				}
 			}
 		}
-		wantedSection.setSummary(UiStyle.percentFine(total) + " per roll");
-		c.add(left(UiStyle.label(current.isEmpty() ? "Tick the tasks you're hunting."
-				: "Chance per roll: " + UiStyle.percentFine(total) + " (about 1 in " + UiStyle.oneDecimal(1 / total) + ")",
-			FontManager.getRunescapeSmallFont(), UiStyle.TEXT)));
+		final String intro;
+		if (current.isEmpty())
+		{
+			wantedSection.setSummary("");
+			intro = "Tick the tasks you're hunting.";
+		}
+		else if (!unknown.isEmpty())
+		{
+			wantedSection.setSummary(UiStyle.percentFine(total) + "+ per roll");
+			intro = "Chance per roll: at least " + UiStyle.percentFine(total) + ". The chance of " + String.join(", ", unknown)
+				+ " shows once you open the task list without a task.";
+		}
+		else
+		{
+			wantedSection.setSummary(UiStyle.percentFine(total) + " per roll");
+			intro = "Chance per roll: " + UiStyle.percentFine(total)
+				+ (total > 0 ? " (about 1 in " + UiStyle.oneDecimal(1 / total) + ")" : "");
+		}
+		c.add(left(UiStyle.text(intro, FontManager.getRunescapeSmallFont(), UiStyle.TEXT, UiStyle.CONTENT_WIDTH)));
 		c.add(spacer(4));
 
 		for (TrackerView.WantedOption o : options)
@@ -582,6 +605,7 @@ public class SlayerTaskLuckPanel extends PluginPanel
 			box.setBackground(UiStyle.BACKGROUND);
 			box.setForeground(o.isWanted() ? Color.WHITE : UiStyle.TEXT);
 			box.setFocusable(false);
+			box.setToolTipText(o.getNote());
 			box.addActionListener(e ->
 			{
 				final List<String> next = new ArrayList<>(current);
@@ -595,7 +619,10 @@ public class SlayerTaskLuckPanel extends PluginPanel
 				}
 				actions.setWanted(group, next);
 			});
-			c.add(row(box, UiStyle.label(UiStyle.percentFine(o.getChance()), FontManager.getRunescapeSmallFont(), UiStyle.MUTED), null));
+			final JLabel chance = UiStyle.label(o.getChance() == null ? "?" : UiStyle.percentFine(o.getChance()),
+				FontManager.getRunescapeSmallFont(), UiStyle.MUTED);
+			chance.setToolTipText(o.getNote());
+			c.add(row(box, chance, null));
 		}
 
 		c.add(spacer(6));

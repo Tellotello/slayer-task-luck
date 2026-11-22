@@ -78,7 +78,7 @@ public final class ViewBuilder
 			final String name = d.getMasterNames().getOrDefault(g, Masters.groups().getOrDefault(g, capitalize(g)));
 			masters.add(new TrackerView.MasterOption(g, name));
 			stats.put(g, StatsCalculator.compute(d, g, name, unluckyCut, luckyCut, true, fairnessCache));
-			wanted.put(g, wantedOptions(d, g));
+			wanted.put(g, wantedOptions(d, g, name));
 			notices.put(g, notices(d, g, name, slayerLevel, combatLevel));
 		}
 		if (groups.size() > 1)
@@ -117,11 +117,16 @@ public final class ViewBuilder
 		return groups.get(0);
 	}
 
-	private static List<TrackerView.WantedOption> wantedOptions(TrackerData d, String group)
+	/**
+	 * The tasks that can be ticked as wanted: everything on the latest list by chance, then the task held when it was
+	 * opened (the game shows it as 0%, so its chance may be unknown), then wanted tasks no longer on the list.
+	 */
+	private static List<TrackerView.WantedOption> wantedOptions(TrackerData d, String group, String name)
 	{
 		final List<OddsSnapshot> snaps = RollScorer.snapshotsNewestFirst(d, group);
+		final List<String> wantedNames = d.getWanted().getOrDefault(group, Collections.emptyList());
 		final Set<String> wantedKeys = new HashSet<>();
-		for (String w : d.getWanted().getOrDefault(group, Collections.emptyList()))
+		for (String w : wantedNames)
 		{
 			wantedKeys.add(OddsModel.key(w));
 		}
@@ -130,12 +135,30 @@ public final class ViewBuilder
 		{
 			return options;
 		}
-		final Map<String, Double> dist = OddsModel.distribution(snaps.get(0), null, OddsModel.learnedWeights(snaps));
+		final OddsSnapshot latest = snaps.get(0);
+		final Map<String, Double> dist = OddsModel.distribution(latest, null, OddsModel.learnedWeights(snaps));
+		final Set<String> listed = new HashSet<>();
 		for (Map.Entry<String, Double> e : dist.entrySet())
 		{
-			options.add(new TrackerView.WantedOption(e.getKey(), e.getValue(), wantedKeys.contains(OddsModel.key(e.getKey()))));
+			listed.add(OddsModel.key(e.getKey()));
+			options.add(new TrackerView.WantedOption(e.getKey(), e.getValue(), wantedKeys.contains(OddsModel.key(e.getKey())), null));
 		}
 		options.sort((a, b) -> Double.compare(b.getChance(), a.getChance()));
+
+		final String held = latest.getHeldTask();
+		if (held != null && listed.add(OddsModel.key(held)))
+		{
+			options.add(new TrackerView.WantedOption(held, null, wantedKeys.contains(OddsModel.key(held)),
+				"This was your task when you opened the list, so the game showed it as 0%. "
+					+ "Open the list again without a task to see its chance."));
+		}
+		for (String w : wantedNames)
+		{
+			if (listed.add(OddsModel.key(w)))
+			{
+				options.add(new TrackerView.WantedOption(w, 0.0, true, "Not on " + name + "'s latest task list."));
+			}
+		}
 		return options;
 	}
 
