@@ -17,6 +17,8 @@ data stays on your computer.
    roll updates as you tick.
 3. Slayer as usual. Every assignment is logged automatically, including skips with a filler master (Turael, Aya, Spria).
 
+Pick any master from the **Master** list at the top of the panel; the ones you've used come first.
+
 ## What you see
 
 ### Overlay

@@ -12,7 +12,11 @@ import com.slayertaskluck.math.Verdict;
 import com.slayertaskluck.model.Confidence;
 import com.slayertaskluck.model.Roll;
 import com.slayertaskluck.model.TrackerData;
+import com.slayertaskluck.ui.TrackerView;
+import com.slayertaskluck.ui.ViewBuilder;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import org.junit.Test;
 
 /** Replays a Turael-skip session through scoring and stats and checks the numbers shown. */
@@ -152,6 +156,29 @@ public class ReplayTest
 		add(d, 900 * MIN, "Kuradal", "Drakes", false);
 		final GroupStats after = StatsCalculator.compute(d, "duradel", "Kuradal", 0.1, 0.1, true, cache);
 		assertEquals(56, after.getFairness().getRolls());
+	}
+
+	@Test
+	public void pickerListsEveryTargetMasterUsedOnesFirst()
+	{
+		final TrackerData d = session();
+		d.getMasterNames().put("duradel", "Kuradal"); // the store records the name last seen
+		final TrackerView v = view(d);
+		final List<String> names = new ArrayList<>();
+		for (TrackerView.MasterOption o : v.getMasters())
+		{
+			names.add(o.getName());
+		}
+		assertEquals(Arrays.asList("Kuradal", "Mazchna", "Vannaka", "Chaeldar", "Konar", "Nieve", "Krystilia"), names);
+		assertEquals("duradel", v.getDefaultGroup());
+		assertEquals(0, v.getStats().get("konar").getRolls());
+		assertTrue(v.getNotices().get("konar").get(0).startsWith("Open Konar's task list"));
+	}
+
+	private static TrackerView view(TrackerData d)
+	{
+		return ViewBuilder.build(d, TrackerView.State.READY, null, null, 0.1, 0.1,
+			name -> Masters.isFiller(name, 0, true, true, true), 90, 120, null);
 	}
 
 	@Test

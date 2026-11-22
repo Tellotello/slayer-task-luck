@@ -1,6 +1,8 @@
 package com.slayertaskluck.tracking;
 
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Pattern;
@@ -13,30 +15,41 @@ public final class Masters
 {
 	private static final Pattern TAGS = Pattern.compile("<[^>]*>");
 	private static final Map<String, String> GROUP_BY_NAME = new HashMap<>();
+	/** Group key to the name shown for it, easiest master first. */
+	private static final Map<String, String> GROUPS = new LinkedHashMap<>();
 
 	static
 	{
-		group("turael", "turael", "aya");
-		group("spria", "spria");
-		group("mazchna", "mazchna", "achtryn vis");
-		group("vannaka", "vannaka");
-		group("chaeldar", "chaeldar");
-		group("konar", "konar", "konar quo maten");
-		group("nieve", "nieve", "steve");
-		group("duradel", "duradel", "kuradal");
-		group("krystilia", "krystilia");
+		group("Turael", "Aya");
+		group("Spria");
+		group("Mazchna", "Achtryn Vis");
+		group("Vannaka");
+		group("Chaeldar");
+		group("Konar", "Konar quo Maten");
+		group("Nieve", "Steve");
+		group("Duradel", "Kuradal");
+		group("Krystilia");
 	}
 
 	private Masters()
 	{
 	}
 
-	private static void group(String group, String... names)
+	/** A group is keyed by its first master's lower-case name ("Duradel" and "Kuradal" are "duradel"). */
+	private static void group(String... names)
 	{
+		final String group = names[0].toLowerCase(Locale.ROOT);
+		GROUPS.put(group, names[0]);
 		for (String name : names)
 		{
-			GROUP_BY_NAME.put(name, group);
+			GROUP_BY_NAME.put(name.toLowerCase(Locale.ROOT), group);
 		}
+	}
+
+	/** Every master group (key to display name), easiest master first. */
+	public static Map<String, String> groups()
+	{
+		return Collections.unmodifiableMap(GROUPS);
 	}
 
 	/** Strips colour tags and non-breaking spaces from a name the game shows. */

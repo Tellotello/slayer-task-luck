@@ -37,7 +37,7 @@ public class TrackerView
 	/** One-off tracker message (e.g. a task list it couldn't attribute), or null. */
 	String notice;
 
-	/** Target masters with data, most recently used first. */
+	/** Target masters with data (most recently used first), then every other target master. */
 	List<MasterOption> masters;
 	/** Master shown by default (and by the overlay): the last one rolled at. */
 	String defaultGroup;

@@ -163,7 +163,7 @@ public class SlayerTaskLuckPanel extends PluginPanel
 				+ "Talk to your Slayer master, open Rewards, then the task list. Then pick your wanted tasks here.", UiStyle.CONTENT_WIDTH);
 		}
 		emptyState.setVisible(!ready || !hasData || options.isEmpty());
-		pickerRow.setVisible(ready && !options.isEmpty());
+		pickerRow.setVisible(ready && hasData && !options.isEmpty());
 
 		final boolean showStats = ready && stats != null;
 		card.getParent().setVisible(showStats);
@@ -320,7 +320,8 @@ public class SlayerTaskLuckPanel extends PluginPanel
 
 	private void addDetours(GroupStats s)
 	{
-		if (s.getTotalDetours() == 0)
+		// Filler detours belong to the master you were skipping for, so a master you haven't used has none.
+		if (s.getTotalDetours() == 0 || s.getRolls() + s.getUncounted() == 0)
 		{
 			return;
 		}

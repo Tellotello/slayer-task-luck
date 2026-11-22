@@ -6,6 +6,7 @@ import com.slayertaskluck.math.StatsCalculator;
 import com.slayertaskluck.model.OddsSnapshot;
 import com.slayertaskluck.model.Roll;
 import com.slayertaskluck.model.TrackerData;
+import com.slayertaskluck.tracking.Masters;
 import com.slayertaskluck.tracking.OddsModel;
 import com.slayertaskluck.tracking.RollScorer;
 import java.util.ArrayList;
@@ -58,13 +59,23 @@ public final class ViewBuilder
 		final List<String> groups = new ArrayList<>(lastActive.keySet());
 		groups.sort((a, b) -> Long.compare(lastActive.get(b), lastActive.get(a)));
 
+		// Every other target master follows, so any of them can be picked before their first task.
+		final List<String> pickable = new ArrayList<>(groups);
+		for (Map.Entry<String, String> m : Masters.groups().entrySet())
+		{
+			if (!pickable.contains(m.getKey()) && !isFillerName.test(m.getValue()))
+			{
+				pickable.add(m.getKey());
+			}
+		}
+
 		final List<TrackerView.MasterOption> masters = new ArrayList<>();
 		final Map<String, GroupStats> stats = new HashMap<>();
 		final Map<String, List<TrackerView.WantedOption>> wanted = new HashMap<>();
 		final Map<String, List<String>> notices = new HashMap<>();
-		for (String g : groups)
+		for (String g : pickable)
 		{
-			final String name = d.getMasterNames().getOrDefault(g, capitalize(g));
+			final String name = d.getMasterNames().getOrDefault(g, Masters.groups().getOrDefault(g, capitalize(g)));
 			masters.add(new TrackerView.MasterOption(g, name));
 			stats.put(g, StatsCalculator.compute(d, g, name, unluckyCut, luckyCut, true, fairnessCache));
 			wanted.put(g, wantedOptions(d, g));
