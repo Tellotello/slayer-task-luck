@@ -39,6 +39,7 @@ Everything except `SlayerTracker`, the Swing classes and the plugin class is pur
   changed is the stored task coming back (unstore or swap), not a roll; a master's assignment leaves them alone, even
   straight after a store. A task that arrives with kills already done (`SLAYER_COUNT` below `SLAYER_COUNT_ORIGINAL`)
   is never a fresh assignment either.
+  `SlayerTrackerTest` replays these sequences against a mocked client.
 
 ## Odds
 
