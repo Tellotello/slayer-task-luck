@@ -10,9 +10,14 @@ import com.slayertaskluck.math.GroupStats;
 import com.slayertaskluck.math.StatsCalculator;
 import com.slayertaskluck.math.Verdict;
 import com.slayertaskluck.model.Confidence;
+import com.slayertaskluck.model.OddsSnapshot;
 import com.slayertaskluck.model.Roll;
 import com.slayertaskluck.model.TrackerData;
+import com.slayertaskluck.ui.TrackerView;
+import com.slayertaskluck.ui.ViewBuilder;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import org.junit.Test;
 
 /** Replays a Turael-skip session through scoring and stats and checks the numbers shown. */
@@ -152,6 +157,66 @@ public class ReplayTest
 		add(d, 900 * MIN, "Kuradal", "Drakes", false);
 		final GroupStats after = StatsCalculator.compute(d, "duradel", "Kuradal", 0.1, 0.1, true, cache);
 		assertEquals(56, after.getFairness().getRolls());
+	}
+
+	@Test
+	public void pickerListsEveryTargetMasterUsedOnesFirst()
+	{
+		final TrackerData d = session();
+		d.getMasterNames().put("duradel", "Kuradal"); // the store records the name last seen
+		final TrackerView v = view(d);
+		final List<String> names = new ArrayList<>();
+		for (TrackerView.MasterOption o : v.getMasters())
+		{
+			names.add(o.getName());
+		}
+		assertEquals("Kuradal", names.get(0));
+		assertEquals(Arrays.asList("Kuradal", "Mazchna", "Vannaka", "Chaeldar", "Konar", "Nieve", "Krystilia"), names);
+		assertEquals("duradel", v.getDefaultGroup());
+		assertEquals(0, v.getStats().get("konar").getRolls());
+		assertTrue(v.getNotices().get("konar").get(0).startsWith("Open Konar's task list"));
+	}
+
+	@Test
+	public void heldTaskCanBeTickedBeforeItsChanceIsKnown()
+	{
+		final TrackerData d = new TrackerData();
+		d.getSnapshots().add(OddsParsingTest.snapshot(KuradalFixture.ON_FIRE_GIANTS, "Fire Giants"));
+		d.getWanted().put("duradel", new ArrayList<>(Arrays.asList("Abyssal Demons", "Kalphite Queen")));
+
+		TrackerView.WantedOption fire = option(view(d), "Fire Giants");
+		assertNull("the list shows a held task as 0%", fire.getChance());
+		assertFalse(fire.isWanted());
+		assertTrue(fire.getNote() != null);
+		final TrackerView.WantedOption gone = option(view(d), "Kalphite Queen");
+		assertEquals(0.0, gone.getChance(), 0);
+		assertTrue("a wanted task off the list can still be unticked", gone.isWanted());
+
+		// An older list opened without a task supplies the weight.
+		final OddsSnapshot older = OddsParsingTest.snapshot(KuradalFixture.NO_TASK, null);
+		older.setTimestamp(500);
+		d.getSnapshots().add(older);
+		fire = option(view(d), "Fire Giants");
+		assertEquals(KuradalFixture.expectedWeight("Fire Giants") / 161.0, fire.getChance(), 1e-12);
+		assertNull(fire.getNote());
+	}
+
+	private static TrackerView view(TrackerData d)
+	{
+		return ViewBuilder.build(d, TrackerView.State.READY, null, null, 0.1, 0.1,
+			name -> Masters.isFiller(name, 0, true, true, true), 90, 120, null);
+	}
+
+	private static TrackerView.WantedOption option(TrackerView v, String task)
+	{
+		for (TrackerView.WantedOption o : v.getWantedOptions().get("duradel"))
+		{
+			if (o.getTask().equals(task))
+			{
+				return o;
+			}
+		}
+		throw new AssertionError(task + " isn't offered");
 	}
 
 	@Test

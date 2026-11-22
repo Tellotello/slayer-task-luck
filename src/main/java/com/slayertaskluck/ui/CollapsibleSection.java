@@ -14,10 +14,13 @@ import net.runelite.client.ui.FontManager;
 /** A titled section that opens and closes on click. Only "Luck over time" starts open. */
 class CollapsibleSection extends JPanel
 {
+	private static final int BAR_PADDING = 8;
+
 	private final String title;
 	private final JLabel header = new JLabel();
 	private final JLabel summary = new JLabel();
 	private final JPanel content = new JPanel();
+	private String summaryText = "";
 	private boolean open;
 
 	CollapsibleSection(String title, boolean open)
@@ -31,7 +34,7 @@ class CollapsibleSection extends JPanel
 
 		final JPanel bar = new JPanel(new BorderLayout());
 		bar.setBackground(UiStyle.CARD);
-		bar.setBorder(BorderFactory.createEmptyBorder(5, 8, 5, 8));
+		bar.setBorder(BorderFactory.createEmptyBorder(5, BAR_PADDING, 5, BAR_PADDING));
 		bar.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 		header.setFont(FontManager.getRunescapeBoldFont());
 		header.setForeground(UiStyle.TEXT);
@@ -62,16 +65,24 @@ class CollapsibleSection extends JPanel
 		return content;
 	}
 
-	/** Short text on the right of the header, visible even while collapsed. */
+	/** Short text on the right of the header, visible even while collapsed. Shortened with "..." if it won't fit. */
 	void setSummary(String text)
 	{
-		summary.setText(text == null ? "" : text);
+		summaryText = text == null ? "" : text;
+		fitSummary();
+	}
+
+	private void fitSummary()
+	{
+		final int room = UiStyle.CONTENT_WIDTH - BAR_PADDING * 2 - header.getPreferredSize().width - UiStyle.ROW_GAP;
+		summary.setText(UiStyle.fit(summaryText, summary.getFontMetrics(summary.getFont()), room));
 	}
 
 	void setOpen(boolean open)
 	{
 		this.open = open;
 		header.setText((open ? "- " : "+ ") + title);
+		fitSummary();
 		content.setVisible(open);
 		revalidate();
 		repaint();

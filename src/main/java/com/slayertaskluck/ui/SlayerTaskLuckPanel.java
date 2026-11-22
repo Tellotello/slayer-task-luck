@@ -9,6 +9,7 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
+import java.awt.Font;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -35,6 +36,8 @@ public class SlayerTaskLuckPanel extends PluginPanel
 {
 	private static final int HISTORY_PAGE = 20;
 	private static final int FAIRNESS_TOP = 5;
+	private static final int HISTORY_PADDING = 6;
+	private static final int HISTORY_WIDTH = UiStyle.CONTENT_WIDTH - 2 * HISTORY_PADDING;
 
 	private final PanelActions actions;
 	private final JPanel content = new JPanel();
@@ -151,16 +154,16 @@ public class SlayerTaskLuckPanel extends PluginPanel
 
 		if (!ready)
 		{
-			emptyState.setText(UiStyle.wrap(view.getState() == TrackerView.State.LOADING
-				? "Loading your data..." : "Log in to see your Slayer luck.", UiStyle.CONTENT_WIDTH));
+			UiStyle.setWrapped(emptyState, view.getState() == TrackerView.State.LOADING
+				? "Loading your data..." : "Log in to see your Slayer luck.", UiStyle.CONTENT_WIDTH);
 		}
 		else if (!hasData || options.isEmpty())
 		{
-			emptyState.setText(UiStyle.wrap("Open the odds list at a Slayer master to start tracking. "
-				+ "Talk to your Slayer master, open Rewards, then the task list. Then pick your wanted tasks here.", UiStyle.CONTENT_WIDTH));
+			UiStyle.setWrapped(emptyState, "Open the odds list at a Slayer master to start tracking. "
+				+ "Talk to your Slayer master, open Rewards, then the task list. Then pick your wanted tasks here.", UiStyle.CONTENT_WIDTH);
 		}
 		emptyState.setVisible(!ready || !hasData || options.isEmpty());
-		pickerRow.setVisible(ready && !options.isEmpty());
+		pickerRow.setVisible(ready && hasData && !options.isEmpty());
 
 		final boolean showStats = ready && stats != null;
 		card.getParent().setVisible(showStats);
@@ -246,7 +249,7 @@ public class SlayerTaskLuckPanel extends PluginPanel
 		}
 		for (String line : lines)
 		{
-			final JLabel l = UiStyle.label(UiStyle.wrap(line, UiStyle.CONTENT_WIDTH), FontManager.getRunescapeSmallFont(), UiStyle.NOTICE);
+			final JLabel l = UiStyle.text(line, FontManager.getRunescapeSmallFont(), UiStyle.NOTICE, UiStyle.CONTENT_WIDTH);
 			l.setBorder(BorderFactory.createEmptyBorder(6, 0, 0, 0));
 			addLeft(notices, l);
 		}
@@ -263,8 +266,8 @@ public class SlayerTaskLuckPanel extends PluginPanel
 		verdict.setText(luck.getTone() == Verdict.Tone.NONE ? "no rolls yet" : luck.getTone().word());
 		verdict.setBackground(UiStyle.chipBackground(luck.getTone()));
 		verdict.setForeground(UiStyle.toneColor(luck.getTone()));
-		card.add(row(UiStyle.label(s.isAllMasters() ? "All masters" : "Luck at " + s.getName(),
-			FontManager.getRunescapeBoldFont(), Color.WHITE), verdict, null));
+		card.add(textRow(s.isAllMasters() ? "All masters" : "Luck at " + s.getName(),
+			FontManager.getRunescapeBoldFont(), Color.WHITE, verdict, UiStyle.CARD_WIDTH, null));
 
 		if (!s.hasLuckData())
 		{
@@ -272,7 +275,7 @@ public class SlayerTaskLuckPanel extends PluginPanel
 				? (s.isAllMasters() ? "No counted rolls yet." : "Get a task from " + s.getName() + " to start.")
 				: "Pick your wanted tasks to see your luck.";
 			card.add(spacer(6));
-			card.add(left(UiStyle.label(UiStyle.wrap(hint, UiStyle.CONTENT_WIDTH - 16), FontManager.getRunescapeSmallFont(), UiStyle.TEXT)));
+			card.add(left(UiStyle.text(hint, FontManager.getRunescapeSmallFont(), UiStyle.TEXT, UiStyle.CARD_WIDTH)));
 			addDetours(s);
 			card.revalidate();
 			return;
@@ -281,16 +284,16 @@ public class SlayerTaskLuckPanel extends PluginPanel
 		card.add(spacer(6));
 		final JLabel dryChip = UiStyle.chip();
 		UiStyle.styleChip(dryChip, s.getDryVerdict());
-		card.add(row(UiStyle.label("Dry streak: " + s.getDryRolls() + (s.getDryRolls() == 1 ? " roll" : " rolls"),
-			FontManager.getRunescapeFont(), UiStyle.TEXT), dryChip,
+		card.add(textRow("Dry streak: " + s.getDryRolls() + (s.getDryRolls() == 1 ? " roll" : " rolls"),
+			FontManager.getRunescapeFont(), UiStyle.TEXT, dryChip, UiStyle.CARD_WIDTH,
 			"<html>" + s.getDryRolls() + " rolls in a row without a wanted task.<br>"
 				+ "If the listed odds are right, a streak at least this long happens about "
 				+ Verdict.oneIn(s.getDryProbability()) + " times (" + UiStyle.percentFine(s.getDryProbability()) + ").</html>"));
 
 		final JLabel wantedChip = UiStyle.chip();
 		UiStyle.styleChip(wantedChip, luck);
-		card.add(row(UiStyle.label("Wanted: " + s.getObserved() + " of " + UiStyle.oneDecimal(s.getExpected()) + " expected",
-			FontManager.getRunescapeFont(), UiStyle.TEXT), wantedChip,
+		card.add(textRow("Wanted: " + s.getObserved() + " of " + UiStyle.oneDecimal(s.getExpected()) + " expected",
+			FontManager.getRunescapeFont(), UiStyle.TEXT, wantedChip, UiStyle.CARD_WIDTH,
 			"<html>Going by the odds on each roll, normal luck would have given about "
 				+ UiStyle.oneDecimal(s.getExpected()) + " (&plusmn;" + UiStyle.oneDecimal(s.getSd()) + ") wanted tasks.<br>"
 				+ "Percentile " + UiStyle.percent(s.getPercentile()) + " (mid-p), z = " + UiStyle.oneDecimal(s.getZ())
@@ -299,32 +302,34 @@ public class SlayerTaskLuckPanel extends PluginPanel
 		addDetours(s);
 
 		card.add(spacer(6));
-		card.add(left(UiStyle.small("Longest dry streak: " + s.getLongestDry() + " ("
+		card.add(left(note("Longest dry streak: " + s.getLongestDry() + " ("
 			+ (s.getLongestDryProbability() <= unluckyCut ? Verdict.oneIn(s.getLongestDryProbability()) : "normal")
-			+ " for " + s.getRolls() + " rolls)")));
+			+ " for " + s.getRolls() + " rolls)", UiStyle.CARD_WIDTH)));
 		if (s.getChancePerRoll() != null && s.getChancePerRoll() > 0)
 		{
-			card.add(left(UiStyle.small("Now " + UiStyle.percentFine(s.getChancePerRoll()) + " per roll: a wanted task about every "
-				+ UiStyle.oneDecimal(1 / s.getChancePerRoll()) + " rolls")));
+			card.add(left(note("Now " + UiStyle.percentFine(s.getChancePerRoll()) + " per roll: a wanted task about every "
+				+ UiStyle.oneDecimal(1 / s.getChancePerRoll()) + " rolls", UiStyle.CARD_WIDTH)));
 		}
 		if (s.getUncounted() > 0)
 		{
-			card.add(left(UiStyle.small(s.getUncounted() + " roll" + (s.getUncounted() == 1 ? "" : "s") + " not counted (see History)")));
+			card.add(left(note(s.getUncounted() + " roll" + (s.getUncounted() == 1 ? "" : "s") + " not counted (see History)",
+				UiStyle.CARD_WIDTH)));
 		}
 		card.revalidate();
 	}
 
 	private void addDetours(GroupStats s)
 	{
-		if (s.getTotalDetours() == 0)
+		// Filler detours belong to the master you were skipping for, so a master you haven't used has none.
+		if (s.getTotalDetours() == 0 || s.getRolls() + s.getUncounted() == 0)
 		{
 			return;
 		}
 		final String who = view.getFillerName() != null ? view.getFillerName() : "Filler";
 		card.add(spacer(2));
-		card.add(row(UiStyle.label(who + " detours: " + s.getDetours()
+		card.add(textRow(who + " detours: " + s.getDetours()
 				+ (s.getDetourMillis() > 0 ? " (" + UiStyle.duration(s.getDetourMillis()) + ")" : ""),
-			FontManager.getRunescapeFont(), UiStyle.TEXT), null,
+			FontManager.getRunescapeFont(), UiStyle.TEXT, null, UiStyle.CARD_WIDTH,
 			"<html>Filler tasks since your last wanted task, timed until your next assignment.<br>All time: "
 				+ s.getTotalDetours() + " (" + UiStyle.duration(s.getTotalDetourMillis()) + ")</html>"));
 	}
@@ -337,7 +342,7 @@ public class SlayerTaskLuckPanel extends PluginPanel
 		final boolean enough = n >= 10 && s.hasLuckData();
 		chart.setVisible(enough);
 		chartEmpty.setVisible(!enough);
-		chartEmpty.setText(UiStyle.wrap("The chart appears after 10 counted rolls (" + n + " so far).", UiStyle.CONTENT_WIDTH));
+		UiStyle.setWrapped(chartEmpty, "The chart appears after 10 counted rolls (" + n + " so far).", UiStyle.CONTENT_WIDTH);
 		if (enough)
 		{
 			chart.setData(s.getChartDiff(), s.getChartSd());
@@ -397,10 +402,11 @@ public class SlayerTaskLuckPanel extends PluginPanel
 		row.setBackground(UiStyle.CARD);
 		row.setBorder(BorderFactory.createCompoundBorder(
 			BorderFactory.createMatteBorder(0, 0, 1, 0, UiStyle.BACKGROUND),
-			BorderFactory.createEmptyBorder(4, 6, 4, 6)));
+			BorderFactory.createEmptyBorder(4, HISTORY_PADDING, 4, HISTORY_PADDING)));
 
-		final Color main = r.isExcluded() ? UiStyle.MUTED : UiStyle.TEXT;
-		final JLabel task = UiStyle.label((r.getTask() == null ? "?" : r.getTask()) + " x" + r.getAmount(), FontManager.getRunescapeFont(), main);
+		final boolean wanted = Boolean.TRUE.equals(r.getWanted());
+		final boolean uncounted = !r.isFiller() && r.getConfidence() == Confidence.NONE;
+		final Color main = r.isExcluded() ? UiStyle.DIM : UiStyle.TEXT;
 		final String right;
 		final Color rightColor;
 		if (r.isFiller())
@@ -408,45 +414,43 @@ public class SlayerTaskLuckPanel extends PluginPanel
 			right = "skip";
 			rightColor = UiStyle.MUTED;
 		}
-		else if (r.getPTask() != null)
+		else if (r.getPTask() != null && !uncounted)
 		{
-			right = UiStyle.percentFine(r.getPTask());
-			rightColor = Boolean.TRUE.equals(r.getWanted()) && !r.isExcluded() ? UiStyle.LUCKY : main;
+			right = UiStyle.percentFine(r.getPTask()) + (r.getConfidence() == Confidence.STALE ? "*" : "");
+			rightColor = r.isExcluded() ? UiStyle.DIM : wanted ? UiStyle.LUCKY : main;
 		}
 		else
 		{
 			right = "?";
 			rightColor = UiStyle.MUTED;
 		}
-		row.add(row(task, UiStyle.label(right, FontManager.getRunescapeFont(), rightColor), null));
+		row.add(textRow((r.getTask() == null ? "?" : r.getTask()) + " x" + r.getAmount(), FontManager.getRunescapeFont(), main,
+			UiStyle.label(right, FontManager.getRunescapeFont(), rightColor), HISTORY_WIDTH, null));
 
-		final String status;
-		if (r.isFiller())
-		{
-			status = "filler";
-		}
-		else if (r.isExcluded())
-		{
-			status = "excluded";
-		}
-		else if (r.getConfidence() == Confidence.NONE)
-		{
-			status = "not counted";
-		}
-		else
-		{
-			status = (Boolean.TRUE.equals(r.getWanted()) ? "wanted" : "not wanted") + (r.getConfidence() == Confidence.STALE ? " *" : "");
-		}
-		final JLabel meta = UiStyle.small(r.getMasterName() + " - " + UiStyle.time(r.getTimestamp()) + " - " + status);
+		// Only the unusual statuses are spelled out; a wanted roll is also shown by its green chance.
+		final String status = r.isExcluded() ? " - excluded" : uncounted ? " - not counted" : wanted ? " - wanted" : "";
 		JLabel toggle = null;
 		if (!r.isFiller())
 		{
 			toggle = UiStyle.link(r.isExcluded() ? "Include" : "Exclude", () -> actions.setExcluded(r.getId(), !r.isExcluded()));
 			toggle.setToolTipText(r.isExcluded() ? "Count this roll again" : "Leave this roll out of the stats (you can undo this)");
 		}
-		row.add(row(meta, toggle, null));
+		row.add(textRow(r.getMasterName() + " - " + UiStyle.time(r.getTimestamp()) + status, FontManager.getRunescapeSmallFont(),
+			r.isExcluded() ? UiStyle.DIM : UiStyle.MUTED, toggle, HISTORY_WIDTH, null));
 
 		final StringBuilder tip = new StringBuilder("<html>");
+		if (r.isFiller())
+		{
+			tip.append("Filler task (a skip, not a luck roll)<br>");
+		}
+		else if (r.isExcluded())
+		{
+			tip.append("Left out of the stats<br>");
+		}
+		else if (!uncounted)
+		{
+			tip.append(wanted ? "A wanted task" : "Not a wanted task").append("<br>");
+		}
 		if (r.getPTask() != null)
 		{
 			tip.append("Listed chance of this task: ").append(UiStyle.percentFine(r.getPTask())).append("<br>");
@@ -461,13 +465,10 @@ public class SlayerTaskLuckPanel extends PluginPanel
 		}
 		if (r.getConfidenceNote() != null)
 		{
-			tip.append(UiStyle.escape(r.getConfidenceNote())).append(r.getConfidence() == Confidence.STALE ? " (*)" : "");
+			tip.append(r.getConfidence() == Confidence.STALE ? "* " : "").append(UiStyle.escape(r.getConfidenceNote()));
 		}
 		tip.append("</html>");
-		if (tip.length() > "<html></html>".length())
-		{
-			setTooltipDeep(row, tip.toString());
-		}
+		setTooltipDeep(row, tip.toString());
 		row.setAlignmentX(Component.LEFT_ALIGNMENT);
 		return row;
 	}
@@ -498,9 +499,9 @@ public class SlayerTaskLuckPanel extends PluginPanel
 		if (f == null)
 		{
 			fairnessSection.setSummary(s.getRolls() + "/" + s.getFairnessMinimum());
-			c.add(left(UiStyle.label(UiStyle.wrap("Checks whether you get each task as often as the listed odds say. "
+			c.add(left(UiStyle.text("Checks whether you get each task as often as the listed odds say. "
 				+ "Needs " + s.getFairnessMinimum() + " counted rolls at " + s.getName() + " (" + s.getRolls() + " so far).",
-				UiStyle.CONTENT_WIDTH), FontManager.getRunescapeSmallFont(), UiStyle.TEXT)));
+				FontManager.getRunescapeSmallFont(), UiStyle.TEXT, UiStyle.CONTENT_WIDTH)));
 			c.revalidate();
 			return;
 		}
@@ -510,12 +511,12 @@ public class SlayerTaskLuckPanel extends PluginPanel
 		final String verdict = odd
 			? "Unusual: a spread this uneven happens by chance only about " + Verdict.oneIn(f.getPValue()) + " times."
 			: "The listed odds look right: your spread of tasks is normal for " + f.getRolls() + " rolls.";
-		final JLabel v = UiStyle.label(UiStyle.wrap(verdict, UiStyle.CONTENT_WIDTH), FontManager.getRunescapeSmallFont(), odd ? UiStyle.NOTICE : UiStyle.TEXT);
+		final JLabel v = UiStyle.text(verdict, FontManager.getRunescapeSmallFont(), odd ? UiStyle.NOTICE : UiStyle.TEXT, UiStyle.CONTENT_WIDTH);
 		v.setToolTipText("Monte Carlo replay of your " + f.getRolls() + " rolls, " + f.getSimulations()
 			+ " times. Empirical p-value " + String.format("%.3f", f.getPValue()) + ".");
 		c.add(left(v));
 		c.add(spacer(4));
-		c.add(left(UiStyle.small(UiStyle.wrap("With this many tasks, a few always look off by chance.", UiStyle.CONTENT_WIDTH))));
+		c.add(left(note("With this many tasks, a few always look off by chance.", UiStyle.CONTENT_WIDTH)));
 		c.add(spacer(6));
 
 		final List<Fairness.Row> rows = f.getRows();
@@ -523,10 +524,9 @@ public class SlayerTaskLuckPanel extends PluginPanel
 		for (int i = 0; i < show; i++)
 		{
 			final Fairness.Row r = rows.get(i);
-			final JLabel name = UiStyle.label(r.getTask(), FontManager.getRunescapeSmallFont(), UiStyle.TEXT);
 			final JLabel nums = UiStyle.label("got " + r.getObserved() + " - exp " + UiStyle.oneDecimal(r.getExpected()),
 				FontManager.getRunescapeSmallFont(), UiStyle.MUTED);
-			c.add(row(name, nums, null));
+			c.add(textRow(r.getTask(), FontManager.getRunescapeSmallFont(), UiStyle.TEXT, nums, UiStyle.CONTENT_WIDTH, null));
 		}
 		if (rows.size() > FAIRNESS_TOP)
 		{
@@ -553,26 +553,49 @@ public class SlayerTaskLuckPanel extends PluginPanel
 		if (options.isEmpty())
 		{
 			wantedSection.setSummary("");
-			c.add(left(UiStyle.label(UiStyle.wrap("Open " + s.getName() + "'s task list first; the tasks you can get appear here.",
-				UiStyle.CONTENT_WIDTH), FontManager.getRunescapeSmallFont(), UiStyle.TEXT)));
+			c.add(left(UiStyle.text("Open " + s.getName() + "'s task list first; the tasks you can get appear here.",
+				FontManager.getRunescapeSmallFont(), UiStyle.TEXT, UiStyle.CONTENT_WIDTH)));
 			c.revalidate();
 			return;
 		}
 
 		double total = 0;
 		final List<String> current = new ArrayList<>();
+		final List<String> unknown = new ArrayList<>();
 		for (TrackerView.WantedOption o : options)
 		{
 			if (o.isWanted())
 			{
-				total += o.getChance();
 				current.add(o.getTask());
+				if (o.getChance() == null)
+				{
+					unknown.add(o.getTask());
+				}
+				else
+				{
+					total += o.getChance();
+				}
 			}
 		}
-		wantedSection.setSummary(UiStyle.percentFine(total) + " per roll");
-		c.add(left(UiStyle.label(current.isEmpty() ? "Tick the tasks you're hunting."
-				: "Chance per roll: " + UiStyle.percentFine(total) + " (about 1 in " + UiStyle.oneDecimal(1 / total) + ")",
-			FontManager.getRunescapeSmallFont(), UiStyle.TEXT)));
+		final String intro;
+		if (current.isEmpty())
+		{
+			wantedSection.setSummary("");
+			intro = "Tick the tasks you're hunting.";
+		}
+		else if (!unknown.isEmpty())
+		{
+			wantedSection.setSummary(UiStyle.percentFine(total) + "+ per roll");
+			intro = "Chance per roll: at least " + UiStyle.percentFine(total) + ". The chance of " + String.join(", ", unknown)
+				+ " shows once you open the task list without a task.";
+		}
+		else
+		{
+			wantedSection.setSummary(UiStyle.percentFine(total) + " per roll");
+			intro = "Chance per roll: " + UiStyle.percentFine(total)
+				+ (total > 0 ? " (about 1 in " + UiStyle.oneDecimal(1 / total) + ")" : "");
+		}
+		c.add(left(UiStyle.text(intro, FontManager.getRunescapeSmallFont(), UiStyle.TEXT, UiStyle.CONTENT_WIDTH)));
 		c.add(spacer(4));
 
 		for (TrackerView.WantedOption o : options)
@@ -582,6 +605,7 @@ public class SlayerTaskLuckPanel extends PluginPanel
 			box.setBackground(UiStyle.BACKGROUND);
 			box.setForeground(o.isWanted() ? Color.WHITE : UiStyle.TEXT);
 			box.setFocusable(false);
+			box.setToolTipText(o.getNote());
 			box.addActionListener(e ->
 			{
 				final List<String> next = new ArrayList<>(current);
@@ -595,13 +619,14 @@ public class SlayerTaskLuckPanel extends PluginPanel
 				}
 				actions.setWanted(group, next);
 			});
-			c.add(row(box, UiStyle.label(UiStyle.percentFine(o.getChance()), FontManager.getRunescapeSmallFont(), UiStyle.MUTED), null));
+			final JLabel chance = UiStyle.label(o.getChance() == null ? "?" : UiStyle.percentFine(o.getChance()),
+				FontManager.getRunescapeSmallFont(), UiStyle.MUTED);
+			chance.setToolTipText(o.getNote());
+			c.add(row(box, chance, null));
 		}
 
 		c.add(spacer(6));
-		final JLabel note = UiStyle.small(UiStyle.wrap("Changes apply to new rolls. Past rolls keep the wanted list they were rolled under.",
-			UiStyle.CONTENT_WIDTH));
-		c.add(left(note));
+		c.add(left(note("Changes apply to new rolls. Past rolls keep the wanted list they were rolled under.", UiStyle.CONTENT_WIDTH)));
 		final JLabel apply = UiStyle.link("Apply to past rolls...", () ->
 		{
 			final int answer = JOptionPane.showConfirmDialog(this,
@@ -626,7 +651,7 @@ public class SlayerTaskLuckPanel extends PluginPanel
 		final JPanel c = dataSection.content();
 		c.removeAll();
 		dataSection.setSummary(view.getRollCount() + " tasks");
-		c.add(left(UiStyle.small(view.getRollCount() + " tasks logged, " + view.getSnapshotCount() + " task lists saved")));
+		c.add(left(note(view.getRollCount() + " tasks logged, " + view.getSnapshotCount() + " task lists saved", UiStyle.CONTENT_WIDTH)));
 		c.add(spacer(6));
 		final JButton export = button("Export CSV");
 		export.addActionListener(e -> actions.exportCsv());
@@ -689,15 +714,40 @@ public class SlayerTaskLuckPanel extends PluginPanel
 		return s;
 	}
 
+	/** Secondary text, wrapped to {@code width}. */
+	private static JLabel note(String text, int width)
+	{
+		return UiStyle.text(text, FontManager.getRunescapeSmallFont(), UiStyle.MUTED, width);
+	}
+
+	/** A {@link #row} whose text wraps to leave room for the value on its right. */
+	private static JPanel textRow(String text, Font font, Color color, JComponent rightSide, int width, String tooltip)
+	{
+		final int room = width - (rightSide != null ? rightSide.getPreferredSize().width + UiStyle.ROW_GAP : 0);
+		return row(UiStyle.text(text, font, color, room), rightSide, tooltip);
+	}
+
 	/** One line: content on the left, an optional chip or value on the right. Transparent over its parent. */
 	private static JPanel row(JComponent leftSide, JComponent rightSide, String tooltip)
 	{
-		final JPanel r = new JPanel(new BorderLayout(6, 0));
+		final JPanel r = new JPanel(new BorderLayout(UiStyle.ROW_GAP, 0));
 		r.setOpaque(false);
 		r.add(leftSide, BorderLayout.CENTER);
 		if (rightSide != null)
 		{
-			r.add(rightSide, BorderLayout.EAST);
+			final boolean wrapped = leftSide instanceof JLabel && ((JLabel) leftSide).getText().startsWith("<html>");
+			if (wrapped)
+			{
+				// Keep a chip on the first line instead of stretching it down the wrapped text.
+				final JPanel top = new JPanel(new BorderLayout());
+				top.setOpaque(false);
+				top.add(rightSide, BorderLayout.NORTH);
+				r.add(top, BorderLayout.EAST);
+			}
+			else
+			{
+				r.add(rightSide, BorderLayout.EAST);
+			}
 		}
 		if (tooltip != null)
 		{

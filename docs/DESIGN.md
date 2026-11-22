@@ -33,6 +33,12 @@ Everything except `SlayerTracker`, the Swing classes and the plugin class is pur
   takes the loaded values as the baseline, never as an assignment. `LOGGED_IN` after an ordinary loading screen
   doesn't reset anything.
 - Completing or cancelling a task (count goes to 0) is not an assignment.
+- Task Storage (Rewards > Tasks: store, unstore, swap) moves a task in or out of `VarPlayerID.SLAYER_STORED_VARP`
+  (with `VarbitID.SLAYER_MASTER_STORED` and `SLAYER_TARGET_BOSSID_STORED`). The tracker keeps those values in its
+  baseline and reads them back with every task change, storage changes included. A new task arriving while they
+  changed is the stored task coming back (unstore or swap), not a roll; a master's assignment leaves them alone, even
+  straight after a store. A task that arrives with kills already done (`SLAYER_COUNT` below `SLAYER_COUNT_ORIGINAL`)
+  is never a fresh assignment either. `SlayerTrackerTest` replays these sequences against a mocked client.
 
 ## Odds
 
@@ -55,7 +61,9 @@ marked approximate.
 
 The list shows the task you currently hold as 0% and rescales the rest. Each snapshot records that held task, and when
 a later roll needs its weight, `OddsModel` borrows it from another exact snapshot of the same master. At roll time,
-the task held then, if still active, is removed from the roll.
+the task held then, if still active, is removed from the roll. The wanted-task picker still offers the held task, with
+an unknown chance until a weight can be borrowed, and keeps wanted tasks that dropped off the list so they can be
+unticked.
 
 ### Blocklist
 
@@ -106,6 +114,14 @@ Typical results, where 1,000 rolls means 1,000 target rolls plus 1,000 filler sk
 
 The fairness simulation only re-runs when the counted rolls change, and it's capped at 4 million simulated rolls per
 run.
+
+## Panel layout
+
+The side panel is a fixed 225 px wide. Long text is broken into lines by measuring it in the label's font
+(`UiStyle.setWrapped`), never with a CSS width: Swing's HTML renderer multiplies `px` widths by 1.3 and then clips the
+text. `PanelPreview` (a test skipped by default; run with
+`STL_PREVIEW=1 ./gradlew test --tests '*PanelPreview' --rerun-tasks`) renders the panel with sample data to
+`build/panel-*.png` at the screen's scale, and fails if any label is cut short or runs past the panel's padding.
 
 ## Persistence and threading
 

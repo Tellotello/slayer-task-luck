@@ -37,7 +37,7 @@ public class TrackerView
 	/** One-off tracker message (e.g. a task list it couldn't attribute), or null. */
 	String notice;
 
-	/** Target masters with data, most recently used first. */
+	/** Target masters with data (most recently used first), then every other target master. */
 	List<MasterOption> masters;
 	/** Master shown by default (and by the overlay): the last one rolled at. */
 	String defaultGroup;
@@ -74,8 +74,10 @@ public class TrackerView
 	public static class WantedOption
 	{
 		String task;
-		/** Chance per roll with no active task. */
-		double chance;
+		/** Chance per roll with no active task, or null when it isn't known yet. */
+		Double chance;
 		boolean wanted;
+		/** Why the chance is unknown or zero, for a tooltip; null for an ordinary row. */
+		String note;
 	}
 }
