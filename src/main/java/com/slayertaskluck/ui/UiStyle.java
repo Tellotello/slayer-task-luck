@@ -37,6 +37,8 @@ public final class UiStyle
 	public static final int CONTENT_WIDTH = PluginPanel.PANEL_WIDTH - 20;
 	/** Usable width inside the headline card's padding. */
 	public static final int CARD_WIDTH = CONTENT_WIDTH - 16;
+	/** Gap between the text and the value on its right in a row. */
+	public static final int ROW_GAP = 6;
 	/** Measured text can render a pixel or two wider than its metrics say. */
 	private static final int SLACK = 2;
 

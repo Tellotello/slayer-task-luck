@@ -9,6 +9,7 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
+import java.awt.Font;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -263,8 +264,8 @@ public class SlayerTaskLuckPanel extends PluginPanel
 		verdict.setText(luck.getTone() == Verdict.Tone.NONE ? "no rolls yet" : luck.getTone().word());
 		verdict.setBackground(UiStyle.chipBackground(luck.getTone()));
 		verdict.setForeground(UiStyle.toneColor(luck.getTone()));
-		card.add(row(UiStyle.label(s.isAllMasters() ? "All masters" : "Luck at " + s.getName(),
-			FontManager.getRunescapeBoldFont(), Color.WHITE), verdict, null));
+		card.add(textRow(s.isAllMasters() ? "All masters" : "Luck at " + s.getName(),
+			FontManager.getRunescapeBoldFont(), Color.WHITE, verdict, UiStyle.CARD_WIDTH, null));
 
 		if (!s.hasLuckData())
 		{
@@ -281,16 +282,16 @@ public class SlayerTaskLuckPanel extends PluginPanel
 		card.add(spacer(6));
 		final JLabel dryChip = UiStyle.chip();
 		UiStyle.styleChip(dryChip, s.getDryVerdict());
-		card.add(row(UiStyle.label("Dry streak: " + s.getDryRolls() + (s.getDryRolls() == 1 ? " roll" : " rolls"),
-			FontManager.getRunescapeFont(), UiStyle.TEXT), dryChip,
+		card.add(textRow("Dry streak: " + s.getDryRolls() + (s.getDryRolls() == 1 ? " roll" : " rolls"),
+			FontManager.getRunescapeFont(), UiStyle.TEXT, dryChip, UiStyle.CARD_WIDTH,
 			"<html>" + s.getDryRolls() + " rolls in a row without a wanted task.<br>"
 				+ "If the listed odds are right, a streak at least this long happens about "
 				+ Verdict.oneIn(s.getDryProbability()) + " times (" + UiStyle.percentFine(s.getDryProbability()) + ").</html>"));
 
 		final JLabel wantedChip = UiStyle.chip();
 		UiStyle.styleChip(wantedChip, luck);
-		card.add(row(UiStyle.label("Wanted: " + s.getObserved() + " of " + UiStyle.oneDecimal(s.getExpected()) + " expected",
-			FontManager.getRunescapeFont(), UiStyle.TEXT), wantedChip,
+		card.add(textRow("Wanted: " + s.getObserved() + " of " + UiStyle.oneDecimal(s.getExpected()) + " expected",
+			FontManager.getRunescapeFont(), UiStyle.TEXT, wantedChip, UiStyle.CARD_WIDTH,
 			"<html>Going by the odds on each roll, normal luck would have given about "
 				+ UiStyle.oneDecimal(s.getExpected()) + " (&plusmn;" + UiStyle.oneDecimal(s.getSd()) + ") wanted tasks.<br>"
 				+ "Percentile " + UiStyle.percent(s.getPercentile()) + " (mid-p), z = " + UiStyle.oneDecimal(s.getZ())
@@ -323,9 +324,9 @@ public class SlayerTaskLuckPanel extends PluginPanel
 		}
 		final String who = view.getFillerName() != null ? view.getFillerName() : "Filler";
 		card.add(spacer(2));
-		card.add(row(UiStyle.label(who + " detours: " + s.getDetours()
+		card.add(textRow(who + " detours: " + s.getDetours()
 				+ (s.getDetourMillis() > 0 ? " (" + UiStyle.duration(s.getDetourMillis()) + ")" : ""),
-			FontManager.getRunescapeFont(), UiStyle.TEXT), null,
+			FontManager.getRunescapeFont(), UiStyle.TEXT, null, UiStyle.CARD_WIDTH,
 			"<html>Filler tasks since your last wanted task, timed until your next assignment.<br>All time: "
 				+ s.getTotalDetours() + " (" + UiStyle.duration(s.getTotalDetourMillis()) + ")</html>"));
 	}
@@ -524,10 +525,9 @@ public class SlayerTaskLuckPanel extends PluginPanel
 		for (int i = 0; i < show; i++)
 		{
 			final Fairness.Row r = rows.get(i);
-			final JLabel name = UiStyle.label(r.getTask(), FontManager.getRunescapeSmallFont(), UiStyle.TEXT);
 			final JLabel nums = UiStyle.label("got " + r.getObserved() + " - exp " + UiStyle.oneDecimal(r.getExpected()),
 				FontManager.getRunescapeSmallFont(), UiStyle.MUTED);
-			c.add(row(name, nums, null));
+			c.add(textRow(r.getTask(), FontManager.getRunescapeSmallFont(), UiStyle.TEXT, nums, UiStyle.CONTENT_WIDTH, null));
 		}
 		if (rows.size() > FAIRNESS_TOP)
 		{
@@ -694,15 +694,34 @@ public class SlayerTaskLuckPanel extends PluginPanel
 		return UiStyle.text(text, FontManager.getRunescapeSmallFont(), UiStyle.MUTED, width);
 	}
 
+	/** A {@link #row} whose text wraps to leave room for the value on its right. */
+	private static JPanel textRow(String text, Font font, Color color, JComponent rightSide, int width, String tooltip)
+	{
+		final int room = width - (rightSide != null ? rightSide.getPreferredSize().width + UiStyle.ROW_GAP : 0);
+		return row(UiStyle.text(text, font, color, room), rightSide, tooltip);
+	}
+
 	/** One line: content on the left, an optional chip or value on the right. Transparent over its parent. */
 	private static JPanel row(JComponent leftSide, JComponent rightSide, String tooltip)
 	{
-		final JPanel r = new JPanel(new BorderLayout(6, 0));
+		final JPanel r = new JPanel(new BorderLayout(UiStyle.ROW_GAP, 0));
 		r.setOpaque(false);
 		r.add(leftSide, BorderLayout.CENTER);
 		if (rightSide != null)
 		{
-			r.add(rightSide, BorderLayout.EAST);
+			final boolean wrapped = leftSide instanceof JLabel && ((JLabel) leftSide).getText().startsWith("<html>");
+			if (wrapped)
+			{
+				// Keep a chip on the first line instead of stretching it down the wrapped text.
+				final JPanel top = new JPanel(new BorderLayout());
+				top.setOpaque(false);
+				top.add(rightSide, BorderLayout.NORTH);
+				r.add(top, BorderLayout.EAST);
+			}
+			else
+			{
+				r.add(rightSide, BorderLayout.EAST);
+			}
 		}
 		if (tooltip != null)
 		{
