@@ -33,6 +33,12 @@ Everything except `SlayerTracker`, the Swing classes and the plugin class is pur
   takes the loaded values as the baseline, never as an assignment. `LOGGED_IN` after an ordinary loading screen
   doesn't reset anything.
 - Completing or cancelling a task (count goes to 0) is not an assignment.
+- Task Storage (Rewards > Tasks: store, unstore, swap) moves a task in or out of `VarPlayerID.SLAYER_STORED_VARP`
+  (with `VarbitID.SLAYER_MASTER_STORED` and `SLAYER_TARGET_BOSSID_STORED`). The tracker keeps those values in its
+  baseline and reads them back with every task change, storage changes included. A new task arriving while they
+  changed is the stored task coming back (unstore or swap), not a roll; a master's assignment leaves them alone, even
+  straight after a store. A task that arrives with kills already done (`SLAYER_COUNT` below `SLAYER_COUNT_ORIGINAL`)
+  is never a fresh assignment either.
 
 ## Odds
 

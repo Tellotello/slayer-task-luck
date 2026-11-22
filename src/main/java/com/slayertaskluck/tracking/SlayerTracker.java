@@ -62,6 +62,7 @@ public class SlayerTracker
 	private int baseTarget;
 	private int baseOriginal;
 	private int baseCount;
+	private String baseStored;
 	private int pendingTick = -1;
 
 	private String lastSpeaker;
@@ -145,12 +146,18 @@ public class SlayerTracker
 	@Subscribe
 	public void onVarbitChanged(VarbitChanged event)
 	{
-		if (!haveBaseline || settleTicks > 0 || event.getVarbitId() != -1)
+		if (!haveBaseline || settleTicks > 0)
 		{
 			return;
 		}
-		final int varp = event.getVarpId();
-		final boolean trigger = varp == VarPlayerID.SLAYER_TARGET
+		// Task storage changes are read back too, so the stored-task baseline stays in step with every store,
+		// unstore and swap.
+		final boolean storage = event.getVarpId() == VarPlayerID.SLAYER_STORED_VARP
+			|| event.getVarbitId() == VarbitID.SLAYER_MASTER_STORED
+			|| event.getVarbitId() == VarbitID.SLAYER_TARGET_BOSSID_STORED;
+		final int varp = event.getVarbitId() == -1 ? event.getVarpId() : -1;
+		final boolean trigger = storage
+			|| varp == VarPlayerID.SLAYER_TARGET
 			|| varp == VarPlayerID.SLAYER_COUNT_ORIGINAL
 			|| (varp == VarPlayerID.SLAYER_COUNT && event.getValue() > baseCount);
 		if (trigger && pendingTick < 0)
@@ -269,20 +276,11 @@ public class SlayerTracker
 		baseTarget = client.getVarpValue(VarPlayerID.SLAYER_TARGET);
 		baseOriginal = client.getVarpValue(VarPlayerID.SLAYER_COUNT_ORIGINAL);
 		baseCount = client.getVarpValue(VarPlayerID.SLAYER_COUNT);
+		baseStored = storedTask();
 		haveBaseline = true;
 		pendingTick = -1;
 
-		currentTaskFiller = null;
-		if (baseCount > 0 && baseTarget > 0)
-		{
-			currentTaskFiller = store.fillerFor(baseTarget, baseOriginal);
-			if (currentTaskFiller == null)
-			{
-				final int slot = client.getVarbitValue(VarbitID.SLAYER_MASTER);
-				currentTaskFiller = Masters.isFiller(store.nameForSlot(slot), slot,
-					config.fillerAya(), config.fillerTurael(), config.fillerSpria());
-			}
-		}
+		currentTaskFiller = baseCount > 0 ? fillerOf(baseTarget, baseOriginal) : null;
 		updateLevels();
 		log.debug("Slayer baseline: task {} ({}/{}), filler={}", baseTarget, baseCount, baseOriginal, currentTaskFiller);
 	}
@@ -295,14 +293,28 @@ public class SlayerTracker
 		final int area = client.getVarpValue(VarPlayerID.SLAYER_AREA);
 		final int slot = client.getVarbitValue(VarbitID.SLAYER_MASTER);
 
+		final String stored = storedTask();
+
 		final boolean changed = target != baseTarget || original != baseOriginal || count > baseCount;
+		final boolean storageMoved = !stored.equals(baseStored);
 		final String excluded = baseCount > 0 && baseTarget > 0 ? taskName(baseTarget) : null;
+		log.debug("Task change: task {} ({}/{}), was {} ({}/{}); storage {} -> {}", target, count, original,
+			baseTarget, baseCount, baseOriginal, baseStored, stored);
 		baseTarget = target;
 		baseOriginal = original;
 		baseCount = count;
+		baseStored = stored;
 		if (!changed || target <= 0 || count <= 0)
 		{
-			return; // cancelled, cleared or completed, not a new task
+			return; // cancelled, cleared, completed or stored, not a new task
+		}
+		// A master's assignment starts at its full amount and leaves task storage alone. A task that moved through
+		// storage (unstore or swap) or already has kills done is a stored task coming back, not a roll.
+		if (storageMoved || count < original)
+		{
+			currentTaskFiller = fillerOf(target, original);
+			log.debug("Task {} came out of task storage; not logged as a roll", target);
+			return;
 		}
 
 		String master = null;
@@ -465,6 +477,33 @@ public class SlayerTracker
 			}
 			return "Task #" + id;
 		});
+	}
+
+	/**
+	 * What the game holds in Task Storage (Rewards > Tasks). Storing, unstoring and swapping all change it; a master's
+	 * assignment doesn't.
+	 */
+	private String storedTask()
+	{
+		return client.getVarpValue(VarPlayerID.SLAYER_STORED_VARP)
+			+ "/" + client.getVarbitValue(VarbitID.SLAYER_MASTER_STORED)
+			+ "/" + client.getVarbitValue(VarbitID.SLAYER_TARGET_BOSSID_STORED);
+	}
+
+	/** Whether a task came from a filler master: from the log when it's there, else from the master slot. */
+	private Boolean fillerOf(int target, int original)
+	{
+		if (target <= 0)
+		{
+			return null;
+		}
+		final Boolean logged = store.fillerFor(target, original);
+		if (logged != null)
+		{
+			return logged;
+		}
+		final int slot = client.getVarbitValue(VarbitID.SLAYER_MASTER);
+		return Masters.isFiller(store.nameForSlot(slot), slot, config.fillerAya(), config.fillerTurael(), config.fillerSpria());
 	}
 
 	private void updateLevels()

@@ -16,6 +16,7 @@ data stays on your computer.
 2. Open the **Slayer Task Luck** side panel and tick the tasks you're hunting under **Wanted tasks**. Your chance per
    roll updates as you tick.
 3. Slayer as usual. Every assignment is logged automatically, including skips with a filler master (Turael, Aya, Spria).
+   Storing, unstoring or swapping a task with **Task Storage** isn't a new roll, so it isn't logged.
 
 Pick any master from the **Master** list at the top of the panel; the ones you've used come first.
 
