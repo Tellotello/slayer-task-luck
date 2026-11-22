@@ -4,11 +4,14 @@ import com.slayertaskluck.math.Verdict;
 import java.awt.Color;
 import java.awt.Cursor;
 import java.awt.Font;
+import java.awt.FontMetrics;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.List;
 import java.util.Locale;
 import javax.swing.BorderFactory;
 import javax.swing.JLabel;
@@ -30,8 +33,12 @@ public final class UiStyle
 	public static final Color MUTED = ColorScheme.LIGHT_GRAY_COLOR;
 	public static final Color LINK = ColorScheme.BRAND_ORANGE;
 
-	/** Usable width inside the side panel's padding. */
+	/** Usable width inside the side panel's padding (and inside a section). */
 	public static final int CONTENT_WIDTH = PluginPanel.PANEL_WIDTH - 20;
+	/** Usable width inside the headline card's padding. */
+	public static final int CARD_WIDTH = CONTENT_WIDTH - 16;
+	/** Measured text can render a pixel or two wider than its metrics say. */
+	private static final int SLACK = 2;
 
 	private UiStyle()
 	{
@@ -118,9 +125,84 @@ public final class UiStyle
 		return l;
 	}
 
-	public static String wrap(String text, int width)
+	/** A label whose text is broken into lines that fit {@code width} pixels. */
+	public static JLabel text(String text, Font font, Color color, int width)
 	{
-		return "<html><div style='width:" + width + "px'>" + escape(text) + "</div></html>";
+		final JLabel l = label("", font, color);
+		setWrapped(l, text, width);
+		return l;
+	}
+
+	/**
+	 * Sets text broken into lines that fit {@code width} pixels in the label's font. The breaks are measured here
+	 * rather than left to a CSS width, which Swing's HTML renderer scales by 1.3 and then clips.
+	 */
+	public static void setWrapped(JLabel label, String text, int width)
+	{
+		final List<String> lines = lines(text, label.getFontMetrics(label.getFont()), width - SLACK);
+		if (lines.size() <= 1)
+		{
+			label.setText(lines.isEmpty() ? "" : lines.get(0));
+			return;
+		}
+		final StringBuilder html = new StringBuilder("<html>");
+		for (int i = 0; i < lines.size(); i++)
+		{
+			html.append(i > 0 ? "<br>" : "").append(escape(lines.get(i)));
+		}
+		label.setText(html.append("</html>").toString());
+	}
+
+	/** Greedy word wrap. A single word wider than the line is cut to fit with "...". */
+	static List<String> lines(String text, FontMetrics fm, int width)
+	{
+		final List<String> out = new ArrayList<>();
+		String line = "";
+		for (String word : (text == null ? "" : text).split(" "))
+		{
+			if (word.isEmpty())
+			{
+				continue;
+			}
+			final String joined = line.isEmpty() ? word : line + " " + word;
+			if (fm.stringWidth(joined) <= width)
+			{
+				line = joined;
+			}
+			else if (line.isEmpty())
+			{
+				out.add(fit(word, fm, width));
+			}
+			else
+			{
+				out.add(line);
+				line = fm.stringWidth(word) <= width ? word : "";
+				if (line.isEmpty())
+				{
+					out.add(fit(word, fm, width));
+				}
+			}
+		}
+		if (!line.isEmpty())
+		{
+			out.add(line);
+		}
+		return out;
+	}
+
+	/** Shortens text with "..." until it fits {@code width} pixels. */
+	public static String fit(String text, FontMetrics fm, int width)
+	{
+		if (text == null || fm.stringWidth(text) <= width)
+		{
+			return text;
+		}
+		String s = text;
+		while (!s.isEmpty() && fm.stringWidth(s + "...") > width)
+		{
+			s = s.substring(0, s.length() - 1);
+		}
+		return s.trim() + "...";
 	}
 
 	public static String escape(String text)

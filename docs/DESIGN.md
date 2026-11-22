@@ -107,6 +107,12 @@ Typical results, where 1,000 rolls means 1,000 target rolls plus 1,000 filler sk
 The fairness simulation only re-runs when the counted rolls change, and it's capped at 4 million simulated rolls per
 run.
 
+## Panel layout
+
+The side panel is a fixed 225 px wide. Long text is broken into lines by measuring it in the label's font
+(`UiStyle.setWrapped`), never with a CSS width: Swing's HTML renderer multiplies `px` widths by 1.3 and then clips the
+text.
+
 ## Persistence and threading
 
 - One JSON file per RuneScape profile, `<rsprofile>.json`, in `getPluginDirectory()`. The store creates the folder,
