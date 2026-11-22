@@ -36,6 +36,8 @@ public class SlayerTaskLuckPanel extends PluginPanel
 {
 	private static final int HISTORY_PAGE = 20;
 	private static final int FAIRNESS_TOP = 5;
+	private static final int HISTORY_PADDING = 6;
+	private static final int HISTORY_WIDTH = UiStyle.CONTENT_WIDTH - 2 * HISTORY_PADDING;
 
 	private final PanelActions actions;
 	private final JPanel content = new JPanel();
@@ -399,10 +401,11 @@ public class SlayerTaskLuckPanel extends PluginPanel
 		row.setBackground(UiStyle.CARD);
 		row.setBorder(BorderFactory.createCompoundBorder(
 			BorderFactory.createMatteBorder(0, 0, 1, 0, UiStyle.BACKGROUND),
-			BorderFactory.createEmptyBorder(4, 6, 4, 6)));
+			BorderFactory.createEmptyBorder(4, HISTORY_PADDING, 4, HISTORY_PADDING)));
 
-		final Color main = r.isExcluded() ? UiStyle.MUTED : UiStyle.TEXT;
-		final JLabel task = UiStyle.label((r.getTask() == null ? "?" : r.getTask()) + " x" + r.getAmount(), FontManager.getRunescapeFont(), main);
+		final boolean wanted = Boolean.TRUE.equals(r.getWanted());
+		final boolean uncounted = !r.isFiller() && r.getConfidence() == Confidence.NONE;
+		final Color main = r.isExcluded() ? UiStyle.DIM : UiStyle.TEXT;
 		final String right;
 		final Color rightColor;
 		if (r.isFiller())
@@ -410,45 +413,43 @@ public class SlayerTaskLuckPanel extends PluginPanel
 			right = "skip";
 			rightColor = UiStyle.MUTED;
 		}
-		else if (r.getPTask() != null)
+		else if (r.getPTask() != null && !uncounted)
 		{
-			right = UiStyle.percentFine(r.getPTask());
-			rightColor = Boolean.TRUE.equals(r.getWanted()) && !r.isExcluded() ? UiStyle.LUCKY : main;
+			right = UiStyle.percentFine(r.getPTask()) + (r.getConfidence() == Confidence.STALE ? "*" : "");
+			rightColor = r.isExcluded() ? UiStyle.DIM : wanted ? UiStyle.LUCKY : main;
 		}
 		else
 		{
 			right = "?";
 			rightColor = UiStyle.MUTED;
 		}
-		row.add(row(task, UiStyle.label(right, FontManager.getRunescapeFont(), rightColor), null));
+		row.add(textRow((r.getTask() == null ? "?" : r.getTask()) + " x" + r.getAmount(), FontManager.getRunescapeFont(), main,
+			UiStyle.label(right, FontManager.getRunescapeFont(), rightColor), HISTORY_WIDTH, null));
 
-		final String status;
-		if (r.isFiller())
-		{
-			status = "filler";
-		}
-		else if (r.isExcluded())
-		{
-			status = "excluded";
-		}
-		else if (r.getConfidence() == Confidence.NONE)
-		{
-			status = "not counted";
-		}
-		else
-		{
-			status = (Boolean.TRUE.equals(r.getWanted()) ? "wanted" : "not wanted") + (r.getConfidence() == Confidence.STALE ? " *" : "");
-		}
-		final JLabel meta = UiStyle.small(r.getMasterName() + " - " + UiStyle.time(r.getTimestamp()) + " - " + status);
+		// Only the unusual statuses are spelled out; a wanted roll is also shown by its green chance.
+		final String status = r.isExcluded() ? " - excluded" : uncounted ? " - not counted" : wanted ? " - wanted" : "";
 		JLabel toggle = null;
 		if (!r.isFiller())
 		{
 			toggle = UiStyle.link(r.isExcluded() ? "Include" : "Exclude", () -> actions.setExcluded(r.getId(), !r.isExcluded()));
 			toggle.setToolTipText(r.isExcluded() ? "Count this roll again" : "Leave this roll out of the stats (you can undo this)");
 		}
-		row.add(row(meta, toggle, null));
+		row.add(textRow(r.getMasterName() + " - " + UiStyle.time(r.getTimestamp()) + status, FontManager.getRunescapeSmallFont(),
+			r.isExcluded() ? UiStyle.DIM : UiStyle.MUTED, toggle, HISTORY_WIDTH, null));
 
 		final StringBuilder tip = new StringBuilder("<html>");
+		if (r.isFiller())
+		{
+			tip.append("Filler task (a skip, not a luck roll)<br>");
+		}
+		else if (r.isExcluded())
+		{
+			tip.append("Left out of the stats<br>");
+		}
+		else if (!uncounted)
+		{
+			tip.append(wanted ? "A wanted task" : "Not a wanted task").append("<br>");
+		}
 		if (r.getPTask() != null)
 		{
 			tip.append("Listed chance of this task: ").append(UiStyle.percentFine(r.getPTask())).append("<br>");
@@ -463,13 +464,10 @@ public class SlayerTaskLuckPanel extends PluginPanel
 		}
 		if (r.getConfidenceNote() != null)
 		{
-			tip.append(UiStyle.escape(r.getConfidenceNote())).append(r.getConfidence() == Confidence.STALE ? " (*)" : "");
+			tip.append(r.getConfidence() == Confidence.STALE ? "* " : "").append(UiStyle.escape(r.getConfidenceNote()));
 		}
 		tip.append("</html>");
-		if (tip.length() > "<html></html>".length())
-		{
-			setTooltipDeep(row, tip.toString());
-		}
+		setTooltipDeep(row, tip.toString());
 		row.setAlignmentX(Component.LEFT_ALIGNMENT);
 		return row;
 	}

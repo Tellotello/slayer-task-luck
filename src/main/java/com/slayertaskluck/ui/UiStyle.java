@@ -31,6 +31,8 @@ public final class UiStyle
 	public static final Color TEXT = new Color(0xDC, 0xDC, 0xDC);
 	/** Secondary text: about 6:1 against the card, still easy to read. */
 	public static final Color MUTED = ColorScheme.LIGHT_GRAY_COLOR;
+	/** Rows left out of the stats. */
+	public static final Color DIM = new Color(0x80, 0x80, 0x80);
 	public static final Color LINK = ColorScheme.BRAND_ORANGE;
 
 	/** Usable width inside the side panel's padding (and inside a section). */
