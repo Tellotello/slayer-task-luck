@@ -86,6 +86,27 @@ is possible.
   statistic. Per-task rows are descriptive only.
 - **Detours:** filler assignments since the last wanted roll, each timed until the next assignment (capped at 2 hours).
 
+## Performance
+
+Measured with `PerformanceBenchmark` (a test skipped by default; run with
+`STL_PERF=1 ./gradlew test --tests '*PerformanceBenchmark' --rerun-tasks`, which writes `build/perf-report.txt`).
+Typical results, where 1,000 rolls means 1,000 target rolls plus 1,000 filler skips:
+
+| Path | Thread | Cost |
+| --- | --- | --- |
+| Overlay draw | client, every frame | ~0.06 ms (a frame at 50 fps is 20 ms) |
+| Event handlers (varps, tick, chat, clicks) | client | O(1); a few comparisons and varp reads |
+| Log a new task | client, per assignment | ~0.02 ms |
+| Read a task list | client, when opened | ~0.05 ms |
+| Data lock held for a copy | any | 0.2 ms at 1,000 rolls; 0.4 ms at 20,000 |
+| View rebuild after a new roll (incl. fairness) | plugin executor | ~90 ms at 1,000 rolls; ~0.5 s at 20,000 |
+| View rebuild after other changes (fairness cached) | plugin executor | ~0.6 ms at 1,000 rolls |
+| Save | plugin executor, debounced | ~3 ms at 1,000 rolls (≈0.6 MB file) |
+| Panel refresh | Swing | ~6 ms |
+
+The fairness simulation only re-runs when the counted rolls change, and it's capped at 4 million simulated rolls per
+run.
+
 ## Persistence and threading
 
 - One JSON file per RuneScape profile, `<rsprofile>.json`, in `getPluginDirectory()`. The store creates the folder,

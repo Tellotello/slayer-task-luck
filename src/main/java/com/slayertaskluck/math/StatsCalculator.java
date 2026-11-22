@@ -11,6 +11,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /** Builds {@link GroupStats} from saved data. Pure; runs on the plugin's background thread. */
 public final class StatsCalculator
@@ -19,19 +20,27 @@ public final class StatsCalculator
 	public static final int FAIRNESS_MINIMUM = 50;
 	/** One detour longer than this (e.g. logged out overnight) is capped so time totals stay meaningful. */
 	static final long MAX_DETOUR_MS = 2 * 60 * 60 * 1000L;
-	private static final long SIMULATION_BUDGET = 20_000_000L;
+	/** Simulated rolls per fairness run (simulations x rolls). 1,000+ simulations is plenty for a fair/unusual verdict. */
+	private static final long SIMULATION_BUDGET = 4_000_000L;
 	private static final int MAX_SIMULATIONS = 20_000;
-	private static final int MIN_SIMULATIONS = 2_000;
+	private static final int MIN_SIMULATIONS = 500;
 
 	private StatsCalculator()
 	{
 	}
 
-	/**
-	 * @param group master group, or null for all masters
-	 */
 	public static GroupStats compute(TrackerData data, String group, String name, double unluckyCut, double luckyCut,
 		boolean withFairness)
+	{
+		return compute(data, group, name, unluckyCut, luckyCut, withFairness, null);
+	}
+
+	/**
+	 * @param group master group, or null for all masters
+	 * @param cache reuses the fairness result while the counted rolls are unchanged; may be null
+	 */
+	public static GroupStats compute(TrackerData data, String group, String name, double unluckyCut, double luckyCut,
+		boolean withFairness, FairnessCache cache)
 	{
 		final List<Roll> all = new ArrayList<>(data.getRolls());
 		all.sort(Comparator.comparingLong(Roll::getTimestamp));
@@ -163,14 +172,36 @@ public final class StatsCalculator
 			}
 			if (withFairness && n >= FAIRNESS_MINIMUM)
 			{
-				b.fairness(fairness(counted, snaps, borrowed));
+				b.fairness(fairness(group, counted, snaps, borrowed, cache));
 			}
 		}
 		return b.build();
 	}
 
-	private static Fairness.Result fairness(List<Roll> counted, List<OddsSnapshot> snaps, Map<String, Integer> borrowed)
+	private static Fairness.Result fairness(String group, List<Roll> counted, List<OddsSnapshot> snaps,
+		Map<String, Integer> borrowed, FairnessCache cache)
 	{
+		// The result depends only on which rolls count and their odds, not on the wanted list.
+		long signature = counted.size();
+		for (Roll r : counted)
+		{
+			signature = signature * 31 + r.getId().hashCode();
+			signature = signature * 31 + Objects.hashCode(r.getSnapshotId());
+			signature = signature * 31 + Objects.hashCode(r.getExcludedTask());
+		}
+		for (OddsSnapshot s : snaps)
+		{
+			signature = signature * 31 + s.getId().hashCode();
+		}
+		if (cache != null)
+		{
+			final Fairness.Result cached = cache.get(group, signature);
+			if (cached != null)
+			{
+				return cached;
+			}
+		}
+
 		final Map<String, OddsSnapshot> byId = new HashMap<>();
 		for (OddsSnapshot s : snaps)
 		{
@@ -195,6 +226,11 @@ public final class StatsCalculator
 		}
 		final int sims = (int) Math.max(MIN_SIMULATIONS, Math.min(MAX_SIMULATIONS, SIMULATION_BUDGET / Math.max(1, dists.size())));
 		// Fixed seed per data size: the result doesn't flicker between redraws.
-		return Fairness.compute(dists, outcomes, sims, 0x5EED + dists.size());
+		final Fairness.Result result = Fairness.compute(dists, outcomes, sims, 0x5EED + dists.size());
+		if (cache != null)
+		{
+			cache.put(group, signature, result);
+		}
+		return result;
 	}
 }

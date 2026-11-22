@@ -3,7 +3,9 @@ package com.slayertaskluck.tracking;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
+import com.slayertaskluck.math.FairnessCache;
 import com.slayertaskluck.math.GroupStats;
 import com.slayertaskluck.math.StatsCalculator;
 import com.slayertaskluck.math.Verdict;
@@ -117,6 +119,39 @@ public class ReplayTest
 		final GroupStats s = StatsCalculator.compute(d, "duradel", "Kuradal", 0.1, 0.1, false);
 		assertEquals(2, s.getObserved());
 		assertEquals(4 * 8 / 161.0, s.getExpected(), 1e-12);
+	}
+
+	@Test
+	public void copyIsEqualButIndependent()
+	{
+		final TrackerData d = session();
+		final TrackerData c = d.copy();
+		assertEquals(d, c);
+		c.getRolls().get(0).setExcluded(true);
+		c.getWanted().get("duradel").add("Trolls");
+		assertFalse(d.getRolls().get(0).isExcluded());
+		assertFalse(d.getWanted().get("duradel").contains("Trolls"));
+	}
+
+	@Test
+	public void fairnessIsReusedUntilTheCountedRollsChange()
+	{
+		final TrackerData d = new TrackerData();
+		d.getSnapshots().add(OddsParsingTest.snapshot(KuradalFixture.NO_TASK, null));
+		d.getWanted().put("duradel", new java.util.ArrayList<>(Arrays.asList("Abyssal Demons")));
+		for (int i = 0; i < 55; i++)
+		{
+			add(d, 2000 + i * MIN, "Kuradal", i % 2 == 0 ? "Gargoyles" : "Trolls", false);
+		}
+		final FairnessCache cache = new FairnessCache();
+		final GroupStats first = StatsCalculator.compute(d, "duradel", "Kuradal", 0.1, 0.1, true, cache);
+		d.getWanted().put("duradel", Arrays.asList("Trolls")); // wanted list doesn't affect fairness
+		final GroupStats again = StatsCalculator.compute(d, "duradel", "Kuradal", 0.1, 0.1, true, cache);
+		assertSame(first.getFairness(), again.getFairness());
+
+		add(d, 900 * MIN, "Kuradal", "Drakes", false);
+		final GroupStats after = StatsCalculator.compute(d, "duradel", "Kuradal", 0.1, 0.1, true, cache);
+		assertEquals(56, after.getFairness().getRolls());
 	}
 
 	@Test

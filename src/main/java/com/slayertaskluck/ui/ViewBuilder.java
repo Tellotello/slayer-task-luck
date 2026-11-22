@@ -1,5 +1,6 @@
 package com.slayertaskluck.ui;
 
+import com.slayertaskluck.math.FairnessCache;
 import com.slayertaskluck.math.GroupStats;
 import com.slayertaskluck.math.StatsCalculator;
 import com.slayertaskluck.model.OddsSnapshot;
@@ -25,7 +26,8 @@ public final class ViewBuilder
 	}
 
 	public static TrackerView build(TrackerData d, TrackerView.State state, String problem, String notice,
-		double unluckyCut, double luckyCut, Predicate<String> isFillerName, int slayerLevel, int combatLevel)
+		double unluckyCut, double luckyCut, Predicate<String> isFillerName, int slayerLevel, int combatLevel,
+		FairnessCache fairnessCache)
 	{
 		if (state != TrackerView.State.READY)
 		{
@@ -64,7 +66,7 @@ public final class ViewBuilder
 		{
 			final String name = d.getMasterNames().getOrDefault(g, capitalize(g));
 			masters.add(new TrackerView.MasterOption(g, name));
-			stats.put(g, StatsCalculator.compute(d, g, name, unluckyCut, luckyCut, true));
+			stats.put(g, StatsCalculator.compute(d, g, name, unluckyCut, luckyCut, true, fairnessCache));
 			wanted.put(g, wantedOptions(d, g));
 			notices.put(g, notices(d, g, name, slayerLevel, combatLevel));
 		}

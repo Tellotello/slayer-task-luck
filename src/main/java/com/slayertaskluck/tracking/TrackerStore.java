@@ -74,7 +74,7 @@ public class TrackerStore
 			}
 			if (loaded && dirty)
 			{
-				submitSave(profileKey, gson.toJson(data));
+				submitSave(profileKey, data.copy());
 			}
 			profileKey = key;
 			loaded = false;
@@ -191,7 +191,7 @@ public class TrackerStore
 	private void saveNow()
 	{
 		final String key;
-		final String json;
+		final TrackerData snapshot;
 		synchronized (this)
 		{
 			if (!loaded || !dirty || profileKey == null)
@@ -199,15 +199,15 @@ public class TrackerStore
 				return;
 			}
 			key = profileKey;
-			json = gson.toJson(data);
+			snapshot = data.copy(); // cheap; JSON is built outside the lock
 			dirty = false;
 		}
-		write(key, json);
+		write(key, gson.toJson(snapshot));
 	}
 
-	private void submitSave(String key, String json)
+	private void submitSave(String key, TrackerData snapshot)
 	{
-		execute(() -> write(key, json));
+		execute(() -> write(key, gson.toJson(snapshot)));
 	}
 
 	private void write(String key, String json)
@@ -283,7 +283,7 @@ public class TrackerStore
 			}
 			if (loaded && dirty && profileKey != null)
 			{
-				submitSave(profileKey, gson.toJson(data));
+				submitSave(profileKey, data.copy());
 				dirty = false;
 			}
 		}
@@ -323,10 +323,10 @@ public class TrackerStore
 		return problem;
 	}
 
-	/** Deep copy for background computation (view building, export). */
+	/** Copy for background computation (view building, export). Holds the lock only for a field copy. */
 	public synchronized TrackerData copy()
 	{
-		return gson.fromJson(gson.toJson(data), TrackerData.class);
+		return data.copy();
 	}
 
 	/** Whether the most recent roll with this task and amount came from a filler master, or null if unknown. */

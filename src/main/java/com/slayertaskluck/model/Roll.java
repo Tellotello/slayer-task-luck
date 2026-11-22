@@ -42,6 +42,33 @@ public class Roll
 	/** Set by the user to leave a misdetected or unwanted entry out of the stats (reversible). */
 	private boolean excluded;
 
+	/** Field-by-field copy; much cheaper than a JSON round trip, so locks are held only briefly. */
+	public Roll copy()
+	{
+		final Roll r = new Roll();
+		r.id = id;
+		r.timestamp = timestamp;
+		r.masterGroup = masterGroup;
+		r.masterName = masterName;
+		r.masterSlot = masterSlot;
+		r.task = task;
+		r.taskId = taskId;
+		r.amount = amount;
+		r.area = area;
+		r.filler = filler;
+		r.slayerLevel = slayerLevel;
+		r.combatLevel = combatLevel;
+		r.snapshotId = snapshotId;
+		r.excludedTask = excludedTask;
+		r.pTask = pTask;
+		r.pWanted = pWanted;
+		r.wanted = wanted;
+		r.confidence = confidence;
+		r.confidenceNote = confidenceNote;
+		r.excluded = excluded;
+		return r;
+	}
+
 	/** True when this roll can be used in the luck math. */
 	public boolean countsForLuck()
 	{

@@ -22,4 +22,29 @@ public class TrackerData
 	/** Blocked task names from the rewards Tasks tab (account-wide), and when that list last changed. */
 	private List<String> blocked = new ArrayList<>();
 	private long blockedChangedAt;
+
+	/**
+	 * Copy that is safe to hand to another thread. Rolls are copied (they change when excluded or re-scored);
+	 * snapshots are shared because they are never modified after being stored.
+	 */
+	public TrackerData copy()
+	{
+		final TrackerData d = new TrackerData();
+		d.schemaVersion = schemaVersion;
+		d.snapshots = new ArrayList<>(snapshots);
+		d.rolls = new ArrayList<>(rolls.size());
+		for (Roll r : rolls)
+		{
+			d.rolls.add(r.copy());
+		}
+		d.wanted = new HashMap<>();
+		for (Map.Entry<String, List<String>> e : wanted.entrySet())
+		{
+			d.wanted.put(e.getKey(), new ArrayList<>(e.getValue()));
+		}
+		d.masterNames = new HashMap<>(masterNames);
+		d.blocked = new ArrayList<>(blocked);
+		d.blockedChangedAt = blockedChangedAt;
+		return d;
+	}
 }

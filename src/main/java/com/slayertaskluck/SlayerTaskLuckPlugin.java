@@ -2,6 +2,7 @@ package com.slayertaskluck;
 
 import com.google.gson.Gson;
 import com.google.inject.Provides;
+import com.slayertaskluck.math.FairnessCache;
 import com.slayertaskluck.tracking.CsvExport;
 import com.slayertaskluck.tracking.Masters;
 import com.slayertaskluck.tracking.SlayerTracker;
@@ -82,6 +83,8 @@ public class SlayerTaskLuckPlugin extends Plugin
 	private SlayerTaskLuckOverlay overlay;
 	private volatile TrackerView view = TrackerView.EMPTY;
 	private final AtomicBoolean recomputeQueued = new AtomicBoolean();
+	/** Only touched on the executor thread. */
+	private FairnessCache fairnessCache;
 
 	@Override
 	protected void startUp() throws Exception
@@ -92,6 +95,7 @@ public class SlayerTaskLuckPlugin extends Plugin
 			t.setDaemon(true);
 			return t;
 		});
+		fairnessCache = new FairnessCache();
 		store = new TrackerStore(gson, executor, this::getPluginDirectory, this::scheduleRecompute);
 		tracker = new SlayerTracker(client, store, config, this::scheduleRecompute);
 
@@ -181,7 +185,7 @@ public class SlayerTaskLuckPlugin extends Plugin
 		{
 			next = ViewBuilder.build(store.copy(), state, store.getProblem(), t.getNotice(), unlucky, lucky,
 				name -> Masters.isFiller(name, 0, config.fillerAya(), config.fillerTurael(), config.fillerSpria()),
-				t.getSlayerLevel(), t.getCombatLevel());
+				t.getSlayerLevel(), t.getCombatLevel(), fairnessCache);
 		}
 		catch (RuntimeException e)
 		{
